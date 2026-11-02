@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory & Stock Management — Hash Table + BST</title>
+  <meta name="description" content="Clean, high-performance Data Structures project demonstrating O(1) Hash Table lookup with separate chaining and O(n) sorted inventory storage via Binary Search Tree in-order traversal.">
+  
+  <!-- Modern Typography: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Top Global Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-badge">
+          <svg class="icon-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          <span>DSA ARCHITECTURE</span>
+        </div>
+        <div class="header-titles">
+          <h1 class="header-title">Inventory &amp; Stock Management</h1>
+          <p class="header-subtitle">
+            Dual-core data structure engine: 
+            <span class="tech-tag hash-tag">Hash Table <small>(O(1) Lookup)</small></span> + 
+            <span class="tech-tag bst-tag">Binary Search Tree <small>(O(n) In-Order)</small></span>
+          </p>
+        </div>
+      </div>
+
+      <div class="header-stats-strip" id="headerStatsStrip">
+        <div class="stat-pill" title="Total unique products currently stored in memory">
+          <span class="stat-label">Items:</span>
+          <span class="stat-value" id="statTotalItems">0</span>
+        </div>
+        <div class="stat-pill" title="Total cumulative stock quantity">
+          <span class="stat-label">Stock Units:</span>
+          <span class="stat-value" id="statTotalUnits">0</span>
+        </div>
+        <div class="stat-pill" title="Aggregated dollar value of stock">
+          <span class="stat-label">Valuation:</span>
+          <span class="stat-value highlight" id="statTotalValuation">$0.00</span>
+        </div>
+        <div class="stat-pill" title="Hash collisions in current 13-bucket table">
+          <span class="stat-label">Collisions:</span>
+          <span class="stat-value warning" id="statCollisions">0</span>
+        </div>
+        <div class="stat-pill" title="Current depth of Binary Search Tree">
+          <span class="stat-label">BST Depth:</span>
+          <span class="stat-value" id="statBstDepth">0</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnLoadSeed" class="btn btn-secondary" title="Load sample unsorted tech products with pre-configured collisions">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Seed Demo Data</span>
+        </button>
+
+        <button id="btnClearAll" class="btn btn-outline" title="Clear all inventory items and reset both data structures">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>Reset</span>
+        </button>
+
+        <button id="btnThemeToggle" class="btn-theme-toggle" aria-label="Toggle Light/Dark Theme" title="Toggle Theme">
+          <svg class="theme-icon sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="theme-icon moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Two-Column Layout -->
+    <main class="main-grid">
+      <!-- LEFT COLUMN: Input Forms & Instant Lookup -->
+      <aside class="left-panel">
+        <!-- Card 1: Add / Update Stock Item -->
+        <section class="card form-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-badge bg-indigo">SYNC CONTROLLER</span>
+              <h2 class="card-title">Add / Update Stock</h2>
+            </div>
+            <span class="complexity-pill" title="If ID exists, updates in O(1) via Hash Table. If new, inserts into both structures.">
+              O(1) or O(log n)
+            </span>
+          </div>
+          
+          <form id="stockForm" class="stock-form" autocomplete="off">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="productId">
+                  Product ID <span class="required">*</span>
+                  <span class="hint-text">(Key for Hash &amp; BST)</span>
+                </label>
+                <div class="input-wrapper">
+                  <span class="input-prefix">#</span>
+                  <input type="number" id="productId" name="productId" placeholder="e.g. 105" required min="1" step="1">
+                </div>
+              </div>
+
+              <div class="form-group flex-2">
+                <label for="productCategory">Category <span class="required">*</span></label>
+                <select id="productCategory" name="productCategory" required>
+                  <option value="" disabled selected>Select category...</option>
+                  <option value="Processor">Processor (CPU)</option>
+                  <option value="Graphics Card">Graphics Card (GPU)</option>
+                  <option value="RAM">RAM / Memory</option>
+                  <option value="Storage">Storage / SSD</option>
+                  <option value="Peripherals">Peripherals</option>
+                  <option value="Display">Display / Monitor</option>
+                  <option value="Motherboard">Motherboard</option>
+                  <option value="Power Supply">Power Supply (PSU)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="productName">Product Name <span class="required">*</span></label>
+              <input type="text" id="productName" name="productName" placeholder="e.g. AMD Ryzen 7 7800X3D" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="productQty">Quantity <span class="required">*</span></label>
+                <input type="number" id="productQty" name="productQty" placeholder="e.g. 14" required min="0" step="1">
+              </div>
+
+              <div class="form-group flex-1">
+                <label for="productPrice">Unit Price ($) <span class="required">*</span></label>
+                <div class="input-wrapper">
+                  <span class="input-prefix">$</span>
+                  <input type="number" id="productPrice" name="productPrice" placeholder="e.g. 389.99" required min="0.01" step="0.01">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" id="btnSubmitStock" class="btn btn-primary flex-1">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+                <span id="btnSubmitStockText">Save / Update Item</span>
+              </button>
+              <button type="button" id="btnResetForm" class="btn btn-ghost" title="Clear form fields">
+                Clear
+              </button>
+            </div>
+
+            <p class="form-footnote">
+              <svg class="footnote-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              If Product ID already exists, Hash Table updates properties in-place on the shared reference in <strong>O(1)</strong> time.
+            </p>
+          </form>
+        </section>
+
+        <!-- Card 2: Instant Search via Hash Table (O(1)) -->
+        <section class="card search-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-badge bg-cyan">HASH TABLE LOOKUP</span>
+              <h2 class="card-title">Instant Search</h2>
+            </div>
+            <span class="complexity-pill bg-cyan-pill">O(1) Avg</span>
+          </div>
+
+          <form id="searchForm" class="search-form">
+            <div class="search-input-group">
+              <div class="input-wrapper flex-1">
+                <span class="input-prefix">#</span>
+                <input type="number" id="searchIdInput" placeholder="Enter Product ID to lookup..." required min="1">
+              </div>
+              <button type="submit" class="btn btn-cyan" id="btnSearch">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <span>Search</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Search Result Diagnostics Container -->
+          <div id="searchResultArea" class="search-result-area">
+            <div class="search-empty-state" id="searchEmptyState">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <path d="M11 8v6M8 11h6"></path>
+              </svg>
+              <p>Enter any Product ID above to verify <strong>O(1)</strong> Hash Table retrieval and chain step diagnostics.</p>
+            </div>
+
+            <!-- Dynamic Result Card -->
+            <div id="searchResultCard" class="search-result-card hidden">
+              <div class="result-header">
+                <span class="badge" id="searchStatusBadge">FOUND</span>
+                <span class="result-timestamp" id="searchTimestamp">Just now</span>
+              </div>
+
+              <div class="result-metrics-grid">
+                <div class="metric-box">
+                  <span class="metric-label">Hash Equation</span>
+                  <span class="metric-value code" id="searchHashCalc">h(105) = 105 % 13</span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-label">Target Bucket</span>
+                  <span class="metric-value highlight" id="searchBucketIndex">Bucket [1]</span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-label">Chain Traversal</span>
+                  <span class="metric-value" id="searchChainSteps">1 Step</span>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-label">Lookup Cost</span>
+                  <span class="metric-value badge-cost">O(1) Const</span>
+                </div>
+              </div>
+
+              <div class="result-product-details" id="searchProductDetails">
+                <!-- Injected via JavaScript -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Card 3: Quick DSA Cheat Sheet / Viva Helper -->
+        <section class="card viva-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-badge bg-emerald">ACADEMIC VIVA</span>
+              <h2 class="card-title">Complexity Reference</h2>
+            </div>
+          </div>
+          <div class="viva-table-wrapper">
+            <table class="viva-table">
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Data Structure</th>
+                  <th>Time Complexity</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Find / Lookup</td>
+                  <td>Hash Table</td>
+                  <td><code class="complexity-green">O(1)</code> avg / <code>O(k)</code> chain</td>
+                </tr>
+                <tr>
+                  <td>In-Place Update</td>
+                  <td>Hash Table (Shared Ref)</td>
+                  <td><code class="complexity-green">O(1)</code> avg</td>
+                </tr>
+                <tr>
+                  <td>Insert Item</td>
+                  <td>Hash Table + BST</td>
+                  <td><code>O(1)</code> + <code>O(log n)</code></td>
+                </tr>
+                <tr>
+                  <td>Sorted Listing</td>
+                  <td>BST In-Order Walk</td>
+                  <td><code class="complexity-blue">O(n)</code> (No sorting needed)</td>
+                </tr>
+                <tr>
+                  <td>Delete Item</td>
+                  <td>Hash Chain + BST Delete</td>
+                  <td><code>O(1)</code> + <code>O(log n)</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </aside>
+
+      <!-- RIGHT COLUMN: Sorted Table & Visualizers -->
+      <section class="right-panel">
+        <!-- Main Sorted Inventory Table (BST In-Order) -->
+        <div class="card table-card">
+          <div class="card-header table-header-flex">
+            <div>
+              <div class="card-title-group">
+                <span class="card-badge bg-blue">BST IN-ORDER TRAVERSAL</span>
+                <h2 class="card-title">Live Sorted Inventory</h2>
+              </div>
+              <p class="table-subtitle">
+                Sorted strictly by ID via <strong>BST In-Order Walk (Left &rarr; Root &rarr; Right)</strong>. 
+                Zero built-in sorting arrays or external libraries used.
+              </p>
+            </div>
+            <div class="table-summary-badges">
+              <span class="badge badge-purple" id="tableItemCount">6 Items</span>
+              <span class="badge badge-subtle">Natural Ascending Order</span>
+            </div>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-container">
+            <table class="inventory-table" id="inventoryTable">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">ID</th>
+                  <th>Product Name</th>
+                  <th>Category</th>
+                  <th style="width: 100px; text-align: right;">Quantity</th>
+                  <th style="width: 110px; text-align: right;">Unit Price</th>
+                  <th style="width: 120px; text-align: right;">Total Value</th>
+                  <th style="width: 110px; text-align: center;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryTableBody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+
+            <div class="empty-inventory" id="emptyInventoryMsg" style="display: none;">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              </svg>
+              <p>Inventory is empty. Click <strong>"Seed Demo Data"</strong> above or add a new stock item.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- DSA State Visualizer (Tabs: Hash Table Buckets vs BST Graph) -->
+        <div class="card visualizer-card">
+          <div class="visualizer-nav-header">
+            <div class="tab-buttons">
+              <button class="tab-btn active" id="tabBtnHash" data-tab="tabHash">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Hash Table Inspector (13 Buckets &amp; Chaining)</span>
+              </button>
+              <button class="tab-btn" id="tabBtnBst" data-tab="tabBst">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="5" r="3"></circle>
+                  <circle cx="6" cy="19" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <line x1="8.5" y1="17" x2="10.5" y2="7.5"></line>
+                  <line x1="15.5" y1="17" x2="13.5" y2="7.5"></line>
+                </svg>
+                <span>BST Tree Hierarchy &amp; Traversal</span>
+              </button>
+            </div>
+
+            <div class="visualizer-legend" id="hashLegend">
+              <span class="legend-item"><span class="legend-dot normal"></span> Singly Occupied</span>
+              <span class="legend-item"><span class="legend-dot collision"></span> Collision Chained (&gt;1)</span>
+              <span class="legend-item"><span class="legend-dot empty"></span> Empty Bucket</span>
+            </div>
+          </div>
+
+          <!-- TAB CONTENT 1: Hash Table Buckets -->
+          <div class="tab-pane active" id="tabHash">
+            <div class="hash-meta-info">
+              <div class="meta-item">
+                <span class="meta-label">Capacity:</span>
+                <span class="meta-value">13 Buckets (Prime Modulo)</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Collision Resolution:</span>
+                <span class="meta-value">Separate Chaining (Singly-Linked List)</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Load Factor (&alpha;):</span>
+                <span class="meta-value" id="hashLoadFactor">0.46</span>
+              </div>
+            </div>
+
+            <div class="buckets-grid" id="bucketsContainer">
+              <!-- Rendered via JavaScript -->
+            </div>
+          </div>
+
+          <!-- TAB CONTENT 2: BST Visualizer -->
+          <div class="tab-pane" id="tabBst">
+            <div class="bst-meta-strip">
+              <div class="bst-traversal-bar">
+                <span class="traversal-label">In-Order Path:</span>
+                <div class="traversal-path" id="bstTraversalPath">
+                  <!-- e.g. 101 -> 103 -> 105 -> 109 -> 114 -> 118 -->
+                </div>
+              </div>
+            </div>
+
+            <div class="bst-canvas-container">
+              <svg id="bstSvgCanvas" class="bst-svg" viewBox="0 0 800 320" preserveAspectRatio="xMidYMid meet">
+                <!-- SVG nodes and links rendered dynamically -->
+              </svg>
+              <div id="bstEmptyNote" class="bst-empty-note" style="display: none;">
+                Binary Search Tree is empty.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Operation Log / Terminal Strip -->
+        <div class="card terminal-card">
+          <div class="terminal-header">
+            <div class="terminal-title-group">
+              <div class="terminal-dots">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+              </div>
+              <span class="terminal-title">LIVE DSA LOG &amp; EXECUTION METRICS</span>
+            </div>
+            <button id="btnClearLog" class="btn-clear-log" title="Clear operation log">
+              Clear Log
+            </button>
+          </div>
+
+          <div class="terminal-body" id="terminalLogBody">
+            <!-- Logs injected dynamically -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Global Toast Notifications -->
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="dsa.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
