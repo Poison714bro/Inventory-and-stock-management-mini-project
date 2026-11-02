@@ -1,0 +1,1 @@
+# Inventory-and-stock-management-mini-project
