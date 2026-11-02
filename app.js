@@ -1,21 +1,21 @@
 /**
- * Inventory & Stock Management - Simplified Frontend Controller
- * -------------------------------------------------------------
- * Interacts with the C++ backend REST API when running on the server,
- * and seamlessly falls back to client-side dsa.js when opened directly as a file.
+ * ============================================================================
+ * Inventory & Stock Management - Clean Lightweight UI Controller
+ * ============================================================================
+ * Interfaces cleanly with the C++ REST API:
+ * - GET    /api/inventory  -> BST In-Order sorted product list
+ * - GET    /api/search     -> O(1) Hash Table lookup & chain diagnostics
+ * - GET    /api/buckets    -> 13-bucket distribution with collision chains
+ * - GET    /api/stats      -> Global statistics
+ * - POST   /api/products   -> Add / Update product
+ * - DELETE /api/products   -> Delete from Hash Table & BST
+ * - POST   /api/seed       -> Re-seed sample data with pre-configured collisions
+ * - POST   /api/clear      -> Reset inventory
+ * ============================================================================
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Client-side fallback engine (from dsa.js)
-  const localManager = (typeof InventoryManager !== 'undefined') ? new InventoryManager(13) : null;
-  if (localManager) {
-    localManager.loadSampleSeedData();
-  }
-
-  // Detection flag: Check if running on a live server (http/https) vs local file protocol
-  const isServer = window.location.protocol.startsWith('http');
-
-  // DOM Elements
+  // DOM Cache
   const statItems = document.getElementById('statItems');
   const statUnits = document.getElementById('statUnits');
   const statValuation = document.getElementById('statValuation');
@@ -46,8 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================================================
   // Toast Helper
   // ==========================================================================
-  function showToast(message) {
-    toast.textContent = message;
+  function showToast(msg) {
+    toast.textContent = msg;
     toast.style.display = 'block';
     setTimeout(() => {
       toast.style.display = 'none';
@@ -55,151 +55,46 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // API Layer (C++ Backend with Fallback)
+  // Unified C++ REST API Client
   // ==========================================================================
-
-  async function fetchInventory() {
-    if (isServer) {
-      try {
-        const res = await fetch('/api/inventory');
-        if (res.ok) return await res.json();
-      } catch (err) {
-        console.warn('API unavailable, falling back to local DSA engine.');
+  async function api(path, method = 'GET', data = null) {
+    try {
+      const options = { method, headers: {} };
+      if (data) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(data);
       }
-    }
-    return localManager ? localManager.getSortedInventory() : [];
-  }
-
-  async function fetchStats() {
-    if (isServer) {
-      try {
-        const res = await fetch('/api/stats');
-        if (res.ok) return await res.json();
-      } catch (err) {}
-    }
-    if (localManager) {
-      const stats = localManager.getStats();
-      return {
-        totalCount: stats.totalCount,
-        totalQuantity: stats.totalQuantity,
-        totalValuation: stats.totalValuation,
-        collidedBuckets: stats.hashStats.collidedBuckets,
-      };
-    }
-    return { totalCount: 0, totalQuantity: 0, totalValuation: 0, collidedBuckets: 0 };
-  }
-
-  async function fetchBuckets() {
-    if (isServer) {
-      try {
-        const res = await fetch('/api/buckets');
-        if (res.ok) return await res.json();
-      } catch (err) {}
-    }
-    if (localManager) {
-      return localManager.hashTable.getBuckets();
-    }
-    return [];
-  }
-
-  async function apiSearch(id) {
-    if (isServer) {
-      try {
-        const res = await fetch(`/api/search?id=${id}`);
-        if (res.ok) return await res.json();
-      } catch (err) {}
-    }
-    if (localManager) {
-      const res = localManager.searchById(id);
-      return {
-        found: res.found,
-        id: id,
-        bucketIndex: res.bucketIndex,
-        chainSteps: res.chainSteps,
-        product: res.product,
-      };
-    }
-    return { found: false, id, bucketIndex: id % 13, chainSteps: 0, product: null };
-  }
-
-  async function apiSaveProduct(p) {
-    if (isServer) {
-      try {
-        const res = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(p),
-        });
-        if (res.ok) return await res.json();
-      } catch (err) {}
-    }
-    if (localManager) {
-      const res = localManager.addOrUpdate(p.id, p.name, p.category, p.quantity, p.price);
-      return { success: true, action: res.action, bucketIndex: res.bucketIndex };
-    }
-    return { success: true };
-  }
-
-  async function apiDeleteProduct(id) {
-    if (isServer) {
-      try {
-        const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
-        if (res.ok) return await res.json();
-      } catch (err) {}
-    }
-    if (localManager) {
-      const res = localManager.deleteById(id);
-      return { success: res.success };
-    }
-    return { success: true };
-  }
-
-  async function apiSeed() {
-    if (isServer) {
-      try {
-        await fetch('/api/seed', { method: 'POST' });
-      } catch (err) {}
-    }
-    if (localManager) {
-      localManager.loadSampleSeedData();
-    }
-  }
-
-  async function apiClear() {
-    if (isServer) {
-      try {
-        await fetch('/api/clear', { method: 'POST' });
-      } catch (err) {}
-    }
-    if (localManager) {
-      localManager.clear();
+      const res = await fetch(path, options);
+      return res.ok ? await res.json() : null;
+    } catch (err) {
+      console.warn(`[API] Failed to fetch ${path}:`, err);
+      return null;
     }
   }
 
   // ==========================================================================
-  // Render View Functions
+  // Render Views
   // ==========================================================================
-
   async function refreshUI(highlightBucket = null) {
-    await renderStats();
-    await renderTable();
-    await renderBuckets(highlightBucket);
+    await Promise.all([renderStats(), renderTable(), renderBuckets(highlightBucket)]);
   }
 
   async function renderStats() {
-    const stats = await fetchStats();
-    statItems.textContent = stats.totalCount || 0;
-    statUnits.textContent = stats.totalQuantity || 0;
-    statValuation.textContent = `$${(stats.totalValuation || 0).toLocaleString('en-US', {
+    const stats = await api('/api/stats');
+    if (!stats) return;
+
+    statItems.textContent = stats.totalCount ?? 0;
+    statUnits.textContent = stats.totalQuantity ?? 0;
+    statValuation.textContent = `$${(stats.totalValuation ?? 0).toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
-    statCollisions.textContent = stats.collidedBuckets || 0;
-    tableCount.textContent = `${stats.totalCount || 0} items`;
+    statCollisions.textContent = stats.collidedBuckets ?? 0;
+    tableCount.textContent = `${stats.totalCount ?? 0} items`;
   }
 
   async function renderTable() {
-    const items = await fetchInventory();
+    const items = await api('/api/inventory');
     inventoryBody.innerHTML = '';
 
     if (!items || items.length === 0) {
@@ -211,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     items.forEach((p) => {
       const tr = document.createElement('tr');
-      const val = p.totalValue !== undefined ? p.totalValue : (p.quantity * p.price);
+      const total = p.totalValue ?? (p.quantity * p.price);
 
       tr.innerHTML = `
         <td><span class="badge-id">#${p.id}</span></td>
@@ -219,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><span class="badge-cat">${escapeHtml(p.category)}</span></td>
         <td style="text-align: right;" class="mono">${p.quantity}</td>
         <td style="text-align: right;" class="mono">$${Number(p.price).toFixed(2)}</td>
-        <td style="text-align: right;" class="mono" style="color:var(--accent-green);">$${Number(val).toFixed(2)}</td>
+        <td style="text-align: right;" class="mono" style="color:var(--accent-green);">$${Number(total).toFixed(2)}</td>
         <td style="text-align: center;">
           <button class="btn-delete-row" title="Delete from Hash Table &amp; BST" onclick="window.deleteProduct(${p.id})">
             Delete
@@ -231,7 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function renderBuckets(highlightIndex = null) {
-    const buckets = await fetchBuckets();
+    const buckets = await api('/api/buckets');
+    if (!buckets) return;
+
     bucketsList.innerHTML = '';
 
     buckets.forEach((b) => {
@@ -239,7 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
       div.className = 'bucket-item';
       div.id = `bucket-${b.index}`;
 
-      if (b.hasCollision || (b.items && b.items.length > 1)) {
+      const count = b.count ?? (b.items ? b.items.length : 0);
+      if (b.hasCollision || count > 1) {
         div.classList.add('collision');
       }
 
@@ -247,23 +145,18 @@ document.addEventListener('DOMContentLoaded', () => {
         div.classList.add('highlight-pulse');
       }
 
-      const count = b.count !== undefined ? b.count : (b.items ? b.items.length : 0);
-      const collisionTag = count > 1 ? ` (${count})` : '';
-
       let chainHtml = '';
       if (!b.items || b.items.length === 0) {
         chainHtml = `<span class="chain-null">NULL (Empty)</span>`;
       } else {
         b.items.forEach((it) => {
-          const key = it.key !== undefined ? it.key : it.id;
-          const name = it.name || (it.product ? it.product.name : '');
-          chainHtml += `[<span class="node-key">#${key}</span>: <span class="node-name">${escapeHtml(name)}</span>] <span class="chain-arrow">&rarr;</span> `;
+          chainHtml += `[<span class="node-key">#${it.key}</span>: <span class="node-name">${escapeHtml(it.name)}</span>] <span class="chain-arrow">&rarr;</span> `;
         });
         chainHtml += `<span class="chain-null">NULL</span>`;
       }
 
       div.innerHTML = `
-        <span class="bucket-badge">Bucket [${b.index}]${collisionTag}</span>
+        <span class="bucket-badge">Bucket [${b.index}]${count > 1 ? ` (${count})` : ''}</span>
         <span class="bucket-chain-text">${chainHtml}</span>
       `;
 
@@ -271,10 +164,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (highlightIndex !== null) {
-      const el = document.getElementById(`bucket-${highlightIndex}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        setTimeout(() => el.classList.remove('highlight-pulse'), 2500);
+      const target = document.getElementById(`bucket-${highlightIndex}`);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setTimeout(() => target.classList.remove('highlight-pulse'), 2500);
       }
     }
   }
@@ -296,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const res = await apiSaveProduct({ id, name, category, quantity, price });
+    const res = await api('/api/products', 'POST', { id, name, category, quantity, price });
     showToast(`Product #${id} saved in C++ backend!`);
 
     productForm.reset();
@@ -320,9 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const id = Number(searchId.value);
     if (!id) return;
 
-    const res = await apiSearch(id);
+    const res = await api(`/api/search?id=${id}`);
 
-    if (res.found && res.product) {
+    if (res && res.found && res.product) {
       const p = res.product;
       searchResult.innerHTML = `
         <div class="search-hit">
@@ -349,17 +242,18 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       `;
-      showToast(`Found Product #${id} in Bucket [${res.bucketIndex}] (${res.chainSteps} step)`);
+      showToast(`Found Product #${id} in Bucket [${res.bucketIndex}]`);
+      renderBuckets(res.bucketIndex);
     } else {
+      const bucket = res ? res.bucketIndex : (id % 13);
       searchResult.innerHTML = `
         <div class="search-miss">
-          Product ID #${id} not found in Hash Table (Checked Bucket [${res.bucketIndex}]).
+          Product ID #${id} not found in Hash Table (Checked Bucket [${bucket}]).
         </div>
       `;
       showToast(`Product ID #${id} not found.`);
+      renderBuckets(bucket);
     }
-
-    await renderBuckets(res.bucketIndex);
   });
 
   // ==========================================================================
@@ -374,12 +268,12 @@ document.addEventListener('DOMContentLoaded', () => {
     productPrice.value = price;
     btnSave.textContent = `Update Stock (#${id})`;
     productQty.focus();
-    showToast(`Loaded ID #${id} into form for in-place O(1) update.`);
+    showToast(`Loaded #${id} for in-place O(1) update.`);
   };
 
   window.deleteProduct = async function (id) {
     if (!confirm(`Delete Product #${id} from both Hash Table and BST?`)) return;
-    await apiDeleteProduct(id);
+    await api(`/api/products?id=${id}`, 'DELETE');
     showToast(`Deleted Product #${id}`);
 
     if (Number(searchId.value) === id) {
@@ -389,14 +283,14 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   btnSeed.addEventListener('click', async () => {
-    await apiSeed();
+    await api('/api/seed', 'POST');
     showToast('Loaded 6 demo items in C++ backend with collisions!');
     await refreshUI();
   });
 
   btnReset.addEventListener('click', async () => {
     if (!confirm('Clear all products from both data structures?')) return;
-    await apiClear();
+    await api('/api/clear', 'POST');
     productForm.reset();
     productId.readOnly = false;
     btnSave.textContent = 'Save Product';
@@ -415,6 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/'/g, '&#039;');
   }
 
-  // Initial Load
+  // Initial Boot
   refreshUI();
 });

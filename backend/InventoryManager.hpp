@@ -12,16 +12,16 @@
 
 /**
  * InventoryManager Controller
- * Synchronizes CustomHashTable and ProductBST using the exact same Product* pointers.
+ * Synchronizes CustomHashTable and ProductBST using identical Product* heap pointers.
  *
- * Lookup & Update: O(1) via Hash Table
+ * Search & Update: O(1) via Hash Table
  * Sorted Retrieval: O(n) via BST In-Order Traversal
+ * Deletion: O(1) Hash Chain + O(log n) BST Delete (No linear vector scanning!)
  */
 class InventoryManager {
 private:
     CustomHashTable hashTable;
     ProductBST bst;
-    std::vector<Product*> allProducts; // Tracks heap allocations for cleanup
 
 public:
     explicit InventoryManager(int hashCapacity = 13)
@@ -34,8 +34,8 @@ public:
     /**
      * Add or Update Product:
      * 1. Checks Hash Table in O(1) avg time.
-     * 2. If exists: updates properties directly on the shared Product pointer.
-     * 3. If new: creates heap Product*, inserts into both Hash Table and BST.
+     * 2. If exists: updates properties directly on shared Product*.
+     * 3. If new: allocates Product*, inserts into both structures.
      */
     bool addOrUpdate(int id, const std::string& name, const std::string& category,
                      int quantity, double price, std::string& outAction,
@@ -43,7 +43,7 @@ public:
         Product* existing = hashTable.get(id, outBucketIdx, outChainSteps);
 
         if (existing != nullptr) {
-            // In-place update on shared memory reference
+            // O(1) in-place update on shared reference
             existing->name = name;
             existing->category = category;
             existing->quantity = quantity;
@@ -51,10 +51,8 @@ public:
             outAction = "UPDATE";
             return false;
         } else {
-            // New allocation
+            // Insert into both data structures
             Product* newProduct = new Product(id, name, category, quantity, price);
-            allProducts.push_back(newProduct);
-
             hashTable.put(id, newProduct, outBucketIdx, outChainSteps);
             bst.insert(newProduct);
             outAction = "INSERT";
@@ -70,29 +68,22 @@ public:
     }
 
     /**
-     * Removes product from both Hash Table and BST, and frees heap memory.
+     * Efficient Deletion:
+     * Removes from Hash Table in O(1) returning the Product* pointer,
+     * removes from BST in O(log n), and immediately frees heap memory.
+     * ZERO linear vector searching!
      */
     bool deleteById(int id, int& outBucketIdx, int& outChainSteps) {
-        Product* target = hashTable.get(id, outBucketIdx, outChainSteps);
+        Product* target = hashTable.remove(id, outBucketIdx, outChainSteps);
         if (target == nullptr) return false;
 
-        hashTable.remove(id, outBucketIdx, outChainSteps);
         bst.remove(id);
-
-        // Remove from master allocation list and free memory
-        for (auto it = allProducts.begin(); it != allProducts.end(); ++it) {
-            if (*it == target) {
-                allProducts.erase(it);
-                delete target;
-                break;
-            }
-        }
-
+        delete target;
         return true;
     }
 
     /**
-     * Returns products sorted by ID ascending via BST In-Order Traversal
+     * Returns products sorted by ID ascending via BST In-Order Traversal (O(n))
      */
     std::vector<Product*> getSortedInventory() const {
         return bst.inOrderTraversal();
@@ -113,7 +104,7 @@ public:
             double price;
         };
 
-        // Unsorted ID sequence ensuring collisions at 13-bucket table:
+        // Unsorted ID sequence ensuring collisions at size 13 table:
         // 105 % 13 = 1, 118 % 13 = 1 (Collision at Bucket 1)
         // 101 % 13 = 10, 114 % 13 = 10 (Collision at Bucket 10)
         std::vector<Seed> seeds = {
@@ -176,12 +167,8 @@ public:
     }
 
     void clear() {
-        hashTable.clear();
-        bst.clear();
-        for (Product* p : allProducts) {
-            delete p;
-        }
-        allProducts.clear();
+        hashTable.clear(true); // Frees all Product* heap instances
+        bst.clear();           // Frees all BSTNode instances
     }
 };
 

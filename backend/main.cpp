@@ -7,11 +7,9 @@
  * 2. ProductBST: O(n) In-Order Sorted Traversal & 3-Case Deletion
  * 3. InventoryManager: Synchronized Dual-Structure Architecture
  *
- * Modes of Execution:
- * A. Interactive CLI Mode:
- *    Run without arguments for an academic viva / console walkthrough.
- * B. Native HTTP Web Server Mode:
- *    Run with `--server [port]` to serve the simplified web frontend & REST API.
+ * Execution Modes:
+ * A. Interactive CLI: Run without flags for console viva evaluation.
+ * B. Native HTTP Server: Run with `--server [port]` to serve web UI & REST API.
  * ============================================================================
  */
 
@@ -39,24 +37,18 @@
 // Global Inventory Instance
 InventoryManager g_manager(13);
 
-// Forward Declarations
 void runInteractiveCli();
 void runHttpServer(int port);
 
 int main(int argc, char* argv[]) {
-    // Seed initial demo items
     g_manager.loadSampleSeedData();
 
     if (argc > 1 && std::string(argv[1]) == "--server") {
-        int port = 8080;
-        if (argc > 2) {
-            port = std::stoi(argv[2]);
-        }
+        int port = (argc > 2) ? std::stoi(argv[2]) : 8080;
         runHttpServer(port);
         return 0;
     }
 
-    // Default to interactive CLI
     std::cout << "==============================================================\n";
     std::cout << "    INVENTORY & STOCK MANAGEMENT SYSTEM (C++ DSA BACKEND)     \n";
     std::cout << "    Custom Hash Table O(1) + Binary Search Tree O(n)          \n";
@@ -72,7 +64,7 @@ int main(int argc, char* argv[]) {
 
 /**
  * ----------------------------------------------------------------------------
- * A. Interactive CLI for Academic Viva & Code Walkthrough
+ * A. Interactive Academic CLI
  * ----------------------------------------------------------------------------
  */
 void displayMenu() {
@@ -145,7 +137,7 @@ void runInteractiveCli() {
             Product* p = g_manager.searchById(id, bucketIdx, chainSteps);
 
             std::cout << "\n--- HASH TABLE LOOKUP DIAGNOSTICS ---\n";
-            std::cout << "Hash Function   : h(" << id << ") = |" << id << "| % 13 = " << bucketIdx << "\n";
+            std::cout << "Hash Equation   : h(" << id << ") = |" << id << "| % 13 = " << bucketIdx << "\n";
             std::cout << "Target Bucket   : Bucket [" << bucketIdx << "]\n";
             std::cout << "Chain Steps     : " << chainSteps << "\n";
             std::cout << "Time Complexity : O(1) Average\n";
@@ -242,7 +234,7 @@ void runInteractiveCli() {
  * ----------------------------------------------------------------------------
  */
 #ifdef _WIN32
-std::string readFileContent(const std::string& path) {
+static std::string readFileContent(const std::string& path) {
     std::ifstream file(path, std::ios::in | std::ios::binary);
     if (!file.is_open()) return "";
     std::ostringstream ss;
@@ -250,7 +242,7 @@ std::string readFileContent(const std::string& path) {
     return ss.str();
 }
 
-std::string getMimeType(const std::string& path) {
+static std::string getMimeType(const std::string& path) {
     if (path.rfind(".html") != std::string::npos) return "text/html";
     if (path.rfind(".css") != std::string::npos) return "text/css";
     if (path.rfind(".js") != std::string::npos) return "application/javascript";
@@ -258,27 +250,20 @@ std::string getMimeType(const std::string& path) {
     return "text/plain";
 }
 
-std::string urlDecode(const std::string& in) {
-    std::string out;
-    for (size_t i = 0; i < in.length(); ++i) {
-        if (in[i] == '%') {
-            if (i + 2 < in.length()) {
-                int hexVal;
-                std::istringstream hexStream(in.substr(i + 1, 2));
-                if (hexStream >> std::hex >> hexVal) {
-                    out += static_cast<char>(hexVal);
-                    i += 2;
-                } else {
-                    out += in[i];
-                }
-            }
-        } else if (in[i] == '+') {
-            out += ' ';
-        } else {
-            out += in[i];
-        }
+static std::string extractJsonField(const std::string& body, const std::string& key) {
+    size_t p = body.find("\"" + key + "\"");
+    if (p == std::string::npos) return "";
+    size_t colon = body.find(':', p);
+    if (colon == std::string::npos) return "";
+    size_t start = body.find_first_not_of(" \t\r\n", colon + 1);
+    if (start == std::string::npos) return "";
+    if (body[start] == '"') {
+        size_t end = body.find('"', start + 1);
+        return body.substr(start + 1, end - start - 1);
+    } else {
+        size_t end = body.find_first_of(",}\r\n", start);
+        return body.substr(start, end - start);
     }
-    return out;
 }
 
 void handleHttpRequest(SOCKET clientSocket) {
@@ -291,32 +276,31 @@ void handleHttpRequest(SOCKET clientSocket) {
     std::string method, uri, version;
     reqStream >> method >> uri >> version;
 
-    std::string responseBody = "";
+    std::string responseBody;
     std::string contentType = "application/json";
     int statusCode = 200;
 
-    // Parse Query Params
     std::string path = uri;
-    std::string query = "";
+    std::string query;
     size_t qPos = uri.find('?');
     if (qPos != std::string::npos) {
         path = uri.substr(0, qPos);
         query = uri.substr(qPos + 1);
     }
 
-    // 1. API: GET /api/inventory
+    // 1. GET /api/inventory
     if (method == "GET" && path == "/api/inventory") {
         responseBody = g_manager.getInventoryJson();
     }
-    // 2. API: GET /api/stats
+    // 2. GET /api/stats
     else if (method == "GET" && path == "/api/stats") {
         responseBody = g_manager.getStatsJson();
     }
-    // 3. API: GET /api/buckets
+    // 3. GET /api/buckets
     else if (method == "GET" && path == "/api/buckets") {
         responseBody = g_manager.getHashTable().getBucketsJson();
     }
-    // 4. API: GET /api/search?id=###
+    // 4. GET /api/search?id=###
     else if (method == "GET" && path == "/api/search") {
         int id = 0;
         size_t idPos = query.find("id=");
@@ -328,11 +312,10 @@ void handleHttpRequest(SOCKET clientSocket) {
         Product* p = g_manager.searchById(id, bucketIdx, chainSteps);
 
         std::ostringstream ss;
-        ss << "{"
-           << "\"found\":" << (p ? "true" : "false") << ","
-           << "\"id\":" << id << ","
-           << "\"bucketIndex\":" << bucketIdx << ","
-           << "\"chainSteps\":" << chainSteps << ",";
+        ss << "{\"found\":" << (p ? "true" : "false")
+           << ",\"id\":" << id
+           << ",\"bucketIndex\":" << bucketIdx
+           << ",\"chainSteps\":" << chainSteps << ",";
         if (p) {
             ss << "\"product\":" << p->toJson();
         } else {
@@ -341,40 +324,21 @@ void handleHttpRequest(SOCKET clientSocket) {
         ss << "}";
         responseBody = ss.str();
     }
-    // 5. API: POST /api/products
+    // 5. POST /api/products
     else if (method == "POST" && path == "/api/products") {
-        // Find body in request
         size_t bodyPos = request.find("\r\n\r\n");
         if (bodyPos != std::string::npos) {
             std::string body = request.substr(bodyPos + 4);
 
-            // Simple parser for key=val or json fields
             int id = 0, qty = 0;
             double price = 0.0;
             std::string name = "Item", category = "General";
 
-            // Support JSON parsing
-            auto extractField = [&](const std::string& key) -> std::string {
-                size_t p = body.find("\"" + key + "\"");
-                if (p == std::string::npos) return "";
-                size_t colon = body.find(':', p);
-                if (colon == std::string::npos) return "";
-                size_t start = body.find_first_not_of(" \t\r\n", colon + 1);
-                if (start == std::string::npos) return "";
-                if (body[start] == '"') {
-                    size_t end = body.find('"', start + 1);
-                    return body.substr(start + 1, end - start - 1);
-                } else {
-                    size_t end = body.find_first_of(",}\r\n", start);
-                    return body.substr(start, end - start);
-                }
-            };
-
-            std::string idStr = extractField("id");
-            std::string nameStr = extractField("name");
-            std::string catStr = extractField("category");
-            std::string qtyStr = extractField("quantity");
-            std::string priceStr = extractField("price");
+            std::string idStr = extractJsonField(body, "id");
+            std::string nameStr = extractJsonField(body, "name");
+            std::string catStr = extractJsonField(body, "category");
+            std::string qtyStr = extractJsonField(body, "quantity");
+            std::string priceStr = extractJsonField(body, "price");
 
             if (!idStr.empty()) id = std::stoi(idStr);
             if (!nameStr.empty()) name = nameStr;
@@ -391,7 +355,7 @@ void handleHttpRequest(SOCKET clientSocket) {
             responseBody = ss.str();
         }
     }
-    // 6. API: DELETE /api/products?id=### or POST /api/delete
+    // 6. DELETE /api/products?id=### or POST /api/delete
     else if ((method == "DELETE" && path == "/api/products") || (method == "POST" && path == "/api/delete")) {
         int id = 0;
         size_t idPos = query.find("id=");
@@ -401,10 +365,8 @@ void handleHttpRequest(SOCKET clientSocket) {
             size_t bodyPos = request.find("\r\n\r\n");
             if (bodyPos != std::string::npos) {
                 std::string body = request.substr(bodyPos + 4);
-                size_t p = body.find("\"id\":");
-                if (p != std::string::npos) {
-                    id = std::stoi(body.substr(p + 5));
-                }
+                std::string idStr = extractJsonField(body, "id");
+                if (!idStr.empty()) id = std::stoi(idStr);
             }
         }
 
@@ -414,19 +376,19 @@ void handleHttpRequest(SOCKET clientSocket) {
         ss << "{\"success\":" << (ok ? "true" : "false") << "}";
         responseBody = ss.str();
     }
-    // 7. API: POST /api/seed
+    // 7. POST /api/seed
     else if (method == "POST" && path == "/api/seed") {
         g_manager.loadSampleSeedData();
         responseBody = "{\"success\":true,\"message\":\"Seed data loaded\"}";
     }
-    // 8. API: POST /api/clear
+    // 8. POST /api/clear
     else if (method == "POST" && path == "/api/clear") {
         g_manager.clear();
         responseBody = "{\"success\":true,\"message\":\"Inventory cleared\"}";
     }
-    // 9. Static File Serving (index.html, style.css, app.js, dsa.js)
+    // 9. Static File Serving (index.html, style.css, app.js)
     else {
-        std::string filename = path == "/" ? "index.html" : path.substr(1);
+        std::string filename = (path == "/" || path.empty()) ? "index.html" : path.substr(1);
         std::string content = readFileContent(filename);
         if (!content.empty()) {
             responseBody = content;
@@ -448,7 +410,7 @@ void handleHttpRequest(SOCKET clientSocket) {
            << "Connection: close\r\n\r\n";
 
     std::string fullResponse = header.str() + responseBody;
-    send(clientSocket, fullResponse.c_str(), (int)fullResponse.size(), 0);
+    send(clientSocket, fullResponse.c_str(), static_cast<int>(fullResponse.size()), 0);
     closesocket(clientSocket);
 }
 
@@ -466,12 +428,12 @@ void runHttpServer(int port) {
         return;
     }
 
-    sockaddr_in serverAddr;
+    sockaddr_in serverAddr{};
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(port);
 
-    if (bind(listenSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+    if (bind(listenSocket, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(serverAddr)) == SOCKET_ERROR) {
         std::cerr << "Socket bind failed on port " << port << ".\n";
         closesocket(listenSocket);
         WSACleanup();
@@ -504,6 +466,6 @@ void runHttpServer(int port) {
 }
 #else
 void runHttpServer(int port) {
-    std::cout << "Native socket server currently configured for Windows (Winsock).\n";
+    std::cout << "Native socket server configured for Windows (Winsock).\n";
 }
 #endif
