@@ -1,84 +1,134 @@
-# 📦 Inventory and Stock Management System (DSA Mini Project)
+# 📦 Inventory & Stock Management System (C++ DSA Project)
 
-A lightweight, high-performance, single-page web application demonstrating core **Data Structures & Algorithms (DSA)** principles:
+A clean, lightweight **Inventory and Stock Management System** featuring a **C++ Backend** implementing custom Data Structures & Algorithms from scratch:
 - **Instant Search ($O(1)$ Average)** via custom **Hash Table** with Separate Chaining.
 - **Ordered Product Storage ($O(n)$ In-Order Traversal)** via custom **Binary Search Tree (BST)**.
-- **Synchronized Shared Memory Architecture**: Both structures point to the exact same `Product` instance in heap memory.
+- **Dual Mode**: Interactive Academic Console CLI + Native C++ HTTP Web Server.
 
 ---
 
-## 🚀 Key Features
+## 🏗️ Architecture & DSA Overview
 
-1. **Custom Data Structures from Scratch (`dsa.js`)**:
-   - **`Product`**: Models inventory entity (`id`, `name`, `category`, `quantity`, `price`, `createdAt`, `updatedAt`).
-   - **`CustomHashTable`**: Fixed array of 13 buckets with prime-modulo hashing ($h(k) = |k| \pmod{13}$) and separate chaining (singly-linked list).
-   - **`ProductBST`**: Binary Search Tree ordered by `product.id`. Implements insertion, 3-case deletion (leaf, 1 child, 2 children using in-order successor), and sorted in-order traversal ($O(n)$) without built-in sorting.
-   - **`InventoryManager`**: Synchronizes both data structures so additions, lookups, in-place updates, and deletions reflect consistently across both engines.
+```
+                                [ Web Frontend ]
+                         (index.html, style.css, app.js)
+                                      │
+                                      ▼  HTTP / REST API (port 8080)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            C++ BACKEND (inventory.exe)                      │
+│                                                                             │
+│                        ┌─────────────────────────┐                          │
+│                        │    InventoryManager     │                          │
+│                        └────────────┬────────────┘                          │
+│                                     │                                       │
+│                   Shared Memory Pointer (Product*)                          │
+│                   ┌─────────────────┴─────────────────┐                     │
+│                   ▼                                   ▼                     │
+│       ┌───────────────────────┐           ┌───────────────────────┐         │
+│       │    CustomHashTable    │           │      ProductBST       │         │
+│       │  - Fixed Capacity: 13 │           │  - Ordered by ID      │         │
+│       │  - Separate Chaining  │           │  - 3-Case Deletion    │         │
+│       │  - O(1) Search/Update │           │  - O(n) In-Order Walk │         │
+│       └───────────────────────┘           └───────────────────────┘         │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-2. **Interactive UI & Visualizers (`index.html`, `style.css`, `app.js`)**:
-   - **Instant Search Card ($O(1)$)**: Diagnostic breakdown displaying target bucket index, chain traversal steps, and equation $h(\text{id})$.
-   - **Live Sorted Inventory Table**: Displays products in ascending order strictly via BST In-Order Walk (Left $\rightarrow$ Root $\rightarrow$ Right).
-   - **Hash Table Bucket Inspector**: Visualizes all 13 buckets with linked list arrows (`-> [ID] -> NULL`) and glowing collision badges.
-   - **BST Tree Hierarchy & SVG Graph**: Renders the dynamic binary search tree hierarchy and in-order traversal path.
-   - **Live Terminal Log**: Tracks the last operations with time complexity notations ($O(1)$, $O(\log n)$, $O(n)$).
-   - **Theme Support**: Seamless Dark/Light mode toggle with `localStorage` persistence.
+Both data structures store pointers to the **same heap-allocated `Product` instance** in memory. Updating an item via the Hash Table in $O(1)$ automatically updates the data retrieved during BST traversal without rebuilding or rebalancing the tree.
+
+---
+
+## 📁 File Structure
+
+```
+├── backend/
+│   ├── Product.hpp            # Product entity class (id, name, category, quantity, price)
+│   ├── CustomHashTable.hpp    # Fixed 13-bucket Hash Table with separate chaining
+│   ├── ProductBST.hpp         # Binary Search Tree with 3-case deletion & in-order traversal
+│   ├── InventoryManager.hpp   # Controller synchronizing Hash Table & BST
+│   └── main.cpp               # Interactive CLI + Native C++ HTTP server
+├── inventory.exe              # Statically compiled standalone C++ executable (no DLLs needed)
+├── index.html                 # Streamlined, minimal single-page dashboard
+├── style.css                  # Clean, modern, responsive CSS styling
+├── app.js                     # Frontend controller connecting to C++ REST API
+├── dsa.js                     # Client-side DSA fallback for direct file opening
+└── README.md                  # Project documentation & viva guide
+```
+
+---
+
+## ⚡ How to Run
+
+### Mode 1: Native C++ Web Server (Recommended)
+Launch the built-in C++ HTTP server:
+```powershell
+.\inventory.exe --server 8080
+```
+Open **[http://localhost:8080](http://localhost:8080)** in your browser.
+
+### Mode 2: Interactive Console CLI (For Viva / Code Walkthrough)
+Run the C++ program directly in your terminal:
+```powershell
+.\inventory.exe
+```
+This opens an interactive menu:
+```
+------------------- DSA INVENTORY MENU -------------------
+1. Add or Update Stock Item (O(1) Hash / O(log n) BST)
+2. Search Product by ID (O(1) Hash Table Lookup)
+3. Display Sorted Inventory (O(n) BST In-Order Traversal)
+4. Delete Product by ID (O(1) Chain + O(log n) BST Successor)
+5. Inspect Hash Table Buckets & Collision Chaining
+6. Display System Statistics & Time Complexities
+7. Re-Seed Demo Data (IDs: 105, 101, 118, 103, 114, 109)
+8. Start Native C++ Web Server on Port 8080
+9. Exit
+```
+
+### Mode 3: Direct Web File (Offline)
+Simply double-click [`index.html`](file:///c:/Users/Pushkar/OneDrive/Desktop/ADS%20mini%20project/index.html). The frontend includes client-side fallback logic (`dsa.js`) so it functions standalone anywhere.
+
+---
+
+## 🔨 How to Recompile C++ Backend
+
+Using `g++` (LLVM-MinGW / GCC):
+```powershell
+g++ -std=c++17 -O2 -static backend/main.cpp -o inventory.exe -lws2_32
+```
+*Note: The `-static` flag packages runtime dependencies into a single, portable executable that runs on any 64-bit Windows machine.*
 
 ---
 
 ## 📊 Time Complexity Matrix
 
-| Operation | Primary Structure | Average Case | Worst Case (Degenerate) | Notes |
-|---|---|---|---|---|
-| **Lookup / Search** | Hash Table | $\mathbf{O(1)}$ | $O(k)$ (chain length) | Modulo indexing + chain traversal |
-| **In-Place Update** | Hash Table | $\mathbf{O(1)}$ | $O(k)$ | Updates shared `Product` object directly |
-| **Insert New Product**| Hash Table + BST | $\mathbf{O(1) + O(\log n)}$ | $O(n)$ | Added to bucket head + placed in BST |
-| **Sorted Retrieval** | BST In-Order | $\mathbf{O(n)}$ | $O(n)$ | Yields sorted array without `Array.sort()` |
-| **Delete Product** | Hash Table + BST | $\mathbf{O(1) + O(\log n)}$ | $O(n)$ | Linked list splice + BST successor swap |
+| Operation | Primary Structure | Time Complexity (Average) | Description |
+|---|---|---|---|
+| **Search / Lookup** | Hash Table | $\mathbf{O(1)}$ | $h(\text{id}) = \text{id} \pmod{13}$ + bucket chain scan |
+| **In-Place Update** | Hash Table | $\mathbf{O(1)}$ | Mutates the shared `Product*` pointer directly |
+| **Insert Product** | Hash Table + BST | $\mathbf{O(1) + O(\log n)}$ | Prepends to bucket head ($O(1)$) and places in BST ($O(\log n)$) |
+| **Sorted Listing** | BST In-Order | $\mathbf{O(n)}$ | Left $\rightarrow$ Root $\rightarrow$ Right walk without using `sort()` |
+| **Delete Product** | Hash Table + BST | $\mathbf{O(1) + O(\log n)}$ | Unlinks from bucket chain + BST 2-child successor replacement |
 
 ---
 
-## 🧪 Pre-Populated Seed Data & Collisions
+## 🧪 Pre-Configured Demo Data & Collisions
 
-On load, the system seeds 6 items in **unsorted ID order**:
-`105, 101, 118, 103, 114, 109`
+The sample data inserts items in **unsorted order**: `105, 101, 118, 103, 114, 109`.
 
-Modulo 13 distribution:
-- **Bucket 1**: `#105` ($105 \pmod{13} = 1$) & `#118` ($118 \pmod{13} = 1$) $\rightarrow$ **Collision chained!**
-- **Bucket 5**: `#109` ($109 \pmod{13} = 5$)
-- **Bucket 10**: `#101` ($101 \pmod{13} = 10$) & `#114` ($114 \pmod{13} = 10$) $\rightarrow$ **Collision chained!**
-- **Bucket 12**: `#103` ($103 \pmod{13} = 12$)
-
-**BST Root**: `#105`, resulting in balanced left and right subtrees. In-order traversal yields:
-`101 → 103 → 105 → 109 → 114 → 118`.
+- **Bucket 1 Collision**: $105 \pmod{13} = 1$ & $118 \pmod{13} = 1$
+  - Chain: `Bucket [1]: #118 -> #105 -> NULL`
+- **Bucket 10 Collision**: $101 \pmod{13} = 10$ & $114 \pmod{13} = 10$
+  - Chain: `Bucket [10]: #114 -> #101 -> NULL`
+- **BST In-Order Traversal**: Produces ascending sequence:
+  - `101 → 103 → 105 (Root) → 109 → 114 → 118`
 
 ---
 
-## 💻 How to Run Locally
+## 🎓 Viva Defense Q&A
 
-You can run this project in two ways:
-
-### Option 1: Direct File (No install required)
-Simply double-click [`index.html`](file:///c:/Users/Pushkar/OneDrive/Desktop/ADS%20mini%20project/index.html) or open it in any modern browser (Chrome, Edge, Firefox, Brave, Safari).
-
-### Option 2: Local HTTP Server (Python)
-```bash
-# In the project directory:
-python -m http.server 5500
-```
-Then visit [http://localhost:5500](http://localhost:5500) in your browser.
-
----
-
-## 🎓 Academic Viva Questions & Answers
-
-1. **Why use both a Hash Table and a BST together?**
-   - *Answer*: A Hash Table provides extremely fast average $O(1)$ search and updates, but cannot efficiently output items in sorted order ($O(n \log n)$ needed to sort buckets). A BST stores elements with intrinsic order, enabling $O(n)$ sorted in-order traversal and range queries. Using both provides the optimal trade-off.
-
-2. **How do you keep data consistent between the Hash Table and BST?**
-   - *Answer*: Both data structures store pointers/references to the *same* `Product` object instance in memory. When a property (like quantity or price) is updated via the Hash Table, the change is instantly reflected when traversing the BST without rebalancing or rebuilding the tree.
-
-3. **How does BST node deletion handle a node with two children?**
-   - *Answer*: It finds the node's **In-Order Successor** (the smallest value in its right subtree). The target node's product data is replaced with the successor's data, and the successor node is recursively deleted from the right subtree.
-
-4. **Why is table capacity set to a prime number (13)?**
-   - *Answer*: Prime table sizes minimize clustering when keys share common factors with the hash modulus, distributing keys more uniformly across buckets.
+1. **Why is the Hash Table bucket size 13?**
+   - 13 is a prime number. Prime moduli reduce clustering when keys share common divisors, distributing items more uniformly across buckets.
+2. **How does BST node deletion work when a node has two children?**
+   - The algorithm locates the **In-Order Successor** (smallest node in the right subtree), copies its data to the target node, and recursively deletes the successor from the right subtree.
+3. **How does synchronization work between the Hash Table and BST?**
+   - Both data structures store the exact same pointer (`Product*`) to heap memory. Any modification made through the Hash Table is immediately visible when traversing the BST.
