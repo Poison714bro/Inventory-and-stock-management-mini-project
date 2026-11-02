@@ -1,21 +1,21 @@
 /**
- * Inventory & Stock Management - Simplified Frontend Controller
+ * Inventory & Stock Management - Unified Controller
  * -------------------------------------------------------------
- * Interacts with the C++ backend REST API when running on the server,
- * and seamlessly falls back to client-side dsa.js when opened directly as a file.
+ * 1. Checks if local C++ server API is active (e.g. running locally on port 8080).
+ * 2. If active, leverages C++ native REST endpoints.
+ * 3. If deployed on Vercel / static host, leverages client-side DSA engine (dsa.js)
+ *    so all features (Hash Table, BST, collisions) work with 100% functionality.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Client-side fallback engine (from dsa.js)
+document.addEventListener('DOMContentLoaded', async () => {
+  // Client-side DSA engine instance (dsa.js)
   const localManager = (typeof InventoryManager !== 'undefined') ? new InventoryManager(13) : null;
   if (localManager) {
     localManager.loadSampleSeedData();
   }
 
-  // Detection flag: Check if running on a live server (http/https) vs local file protocol
-  const isServer = window.location.protocol.startsWith('http');
-
-  // DOM Elements
+  // DOM Elements Cache
+  const engineBadge = document.getElementById('engineBadge');
   const statItems = document.getElementById('statItems');
   const statUnits = document.getElementById('statUnits');
   const statValuation = document.getElementById('statValuation');
@@ -43,6 +43,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnReset = document.getElementById('btnReset');
   const toast = document.getElementById('toast');
 
+  // Server Detection
+  let useRemoteServer = false;
+
+  async function checkServer() {
+    if (window.location.protocol.startsWith('http')) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 600);
+        const res = await fetch('/api/stats', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          useRemoteServer = true;
+          if (engineBadge) engineBadge.textContent = 'C++ REST API';
+          return;
+        }
+      } catch (err) {
+        useRemoteServer = false;
+      }
+    }
+    useRemoteServer = false;
+    if (engineBadge) engineBadge.textContent = 'DSA ENGINE';
+  }
+
   // ==========================================================================
   // Toast Helper
   // ==========================================================================
@@ -55,27 +78,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================================
-  // API Layer (C++ Backend with Fallback)
+  // API Layer with Dual Engine Support
   // ==========================================================================
 
   async function fetchInventory() {
-    if (isServer) {
+    if (useRemoteServer) {
       try {
         const res = await fetch('/api/inventory');
         if (res.ok) return await res.json();
       } catch (err) {
-        console.warn('API unavailable, falling back to local DSA engine.');
+        useRemoteServer = false;
       }
     }
     return localManager ? localManager.getSortedInventory() : [];
   }
 
   async function fetchStats() {
-    if (isServer) {
+    if (useRemoteServer) {
       try {
         const res = await fetch('/api/stats');
         if (res.ok) return await res.json();
-      } catch (err) {}
+      } catch (err) {
+        useRemoteServer = false;
+      }
     }
     if (localManager) {
       const stats = localManager.getStats();
@@ -90,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function fetchBuckets() {
-    if (isServer) {
+    if (useRemoteServer) {
       try {
         const res = await fetch('/api/buckets');
         if (res.ok) {
@@ -98,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (Array.isArray(data) && data.length > 0) return data;
         }
       } catch (err) {
-        console.warn('API /api/buckets error:', err);
+        useRemoteServer = false;
       }
     }
     if (localManager) {
@@ -112,11 +137,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function apiSearch(id) {
-    if (isServer) {
+    if (useRemoteServer) {
       try {
         const res = await fetch(`/api/search?id=${id}`);
         if (res.ok) return await res.json();
-      } catch (err) {}
+      } catch (err) {
+        useRemoteServer = false;
+      }
     }
     if (localManager) {
       const res = localManager.searchById(id);
@@ -132,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function apiSaveProduct(p) {
-    if (isServer) {
+    if (useRemoteServer) {
       try {
         const res = await fetch('/api/products', {
           method: 'POST',
@@ -140,7 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify(p),
         });
         if (res.ok) return await res.json();
-      } catch (err) {}
+      } catch (err) {
+        useRemoteServer = false;
+      }
     }
     if (localManager) {
       const res = localManager.addOrUpdate(p.id, p.name, p.category, p.quantity, p.price);
@@ -150,11 +179,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function apiDeleteProduct(id) {
-    if (isServer) {
+    if (useRemoteServer) {
       try {
         const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
         if (res.ok) return await res.json();
-      } catch (err) {}
+      } catch (err) {
+        useRemoteServer = false;
+      }
     }
     if (localManager) {
       const res = localManager.deleteById(id);
@@ -164,10 +195,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function apiSeed() {
-    if (isServer) {
+    if (useRemoteServer) {
       try {
         await fetch('/api/seed', { method: 'POST' });
-      } catch (err) {}
+      } catch (err) {
+        useRemoteServer = false;
+      }
     }
     if (localManager) {
       localManager.loadSampleSeedData();
@@ -175,10 +208,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function apiClear() {
-    if (isServer) {
+    if (useRemoteServer) {
       try {
         await fetch('/api/clear', { method: 'POST' });
-      } catch (err) {}
+      } catch (err) {
+        useRemoteServer = false;
+      }
     }
     if (localManager) {
       localManager.clear();
@@ -305,8 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const res = await apiSaveProduct({ id, name, category, quantity, price });
-    showToast(`Product #${id} saved in C++ backend!`);
+    await apiSaveProduct({ id, name, category, quantity, price });
+    showToast(`Product #${id} saved successfully!`);
 
     productForm.reset();
     productId.readOnly = false;
@@ -399,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnSeed.addEventListener('click', async () => {
     await apiSeed();
-    showToast('Loaded 6 demo items in C++ backend with collisions!');
+    showToast('Loaded 6 demo items with collisions!');
     await refreshUI();
   });
 
@@ -424,6 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/'/g, '&#039;');
   }
 
-  // Initial Load
-  refreshUI();
+  // Initial Load: check if live C++ backend is responding, then refresh
+  await checkServer();
+  await refreshUI();
 });

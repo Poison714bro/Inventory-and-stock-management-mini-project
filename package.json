@@ -1,14 +1,13 @@
 {
   "name": "inventory-and-stock-management-mini-project",
   "version": "1.0.0",
-  "description": "Inventory and Stock Management System powered by C++ custom Hash Table and Binary Search Tree",
-  "main": "app.js",
+  "description": "Inventory and Stock Management System powered by custom Hash Table and Binary Search Tree",
   "scripts": {
-    "start": "inventory.exe --server 8080",
+    "build": "echo Static site ready for deployment",
     "dev": "inventory.exe --server 8080",
     "serve": "inventory.exe --server 8080",
-    "cli": "inventory.exe",
-    "build": "g++ -std=c++17 -O2 -static backend/main.cpp -o inventory.exe -lws2_32"
+    "compile": "g++ -std=c++17 -O2 -static backend/main.cpp -o inventory.exe -lws2_32",
+    "cli": "inventory.exe"
   },
   "keywords": [
     "dsa",
