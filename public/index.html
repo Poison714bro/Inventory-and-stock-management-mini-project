@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Management — C++ Backend (Hash Table + BST)</title>
+  <meta name="description" content="Simple, lightweight Inventory & Stock Management web application powered by a custom C++ backend implementing a Hash Table and Binary Search Tree.">
+  
+  <!-- Modern Clean Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="brand">
+          <span class="badge-cpp" id="engineBadge">C++ BACKEND</span>
+          <h1 class="title">Inventory &amp; Stock Management</h1>
+        </div>
+        <p class="subtitle">
+          Dual-engine DSA architecture: 
+          <strong>Hash Table</strong> (O(1) Fast Search) + 
+          <strong>Binary Search Tree</strong> (O(n) Sorted Storage)
+        </p>
+      </div>
+
+      <div class="header-right">
+        <div class="stats-bar">
+          <div class="stat-item">
+            <span class="stat-num" id="statItems">0</span>
+            <span class="stat-lbl">Items</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num" id="statUnits">0</span>
+            <span class="stat-lbl">Stock Units</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num text-success" id="statValuation">$0.00</span>
+            <span class="stat-lbl">Valuation</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num text-warning" id="statCollisions">0</span>
+            <span class="stat-lbl">Collisions</span>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button id="btnSeed" class="btn btn-secondary" title="Load sample unsorted items with collisions">
+            Seed Demo Data
+          </button>
+          <button id="btnReset" class="btn btn-danger-outline" title="Clear all stock items">
+            Reset
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Two-Column Layout -->
+    <main class="grid-layout">
+      <!-- LEFT COLUMN: Input & Instant Search -->
+      <section class="col-left">
+        <!-- Card 1: Add / Update Stock -->
+        <div class="card">
+          <div class="card-title-row">
+            <h2>Add / Update Product</h2>
+            <span class="complexity-tag">O(1) Hash / O(log n) BST</span>
+          </div>
+          <p class="card-desc">
+            If Product ID already exists, Hash Table updates properties in-place in <strong>O(1)</strong> time.
+          </p>
+
+          <form id="productForm" class="simple-form">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="productId">Product ID *</label>
+                <input type="number" id="productId" placeholder="e.g. 105" required min="1" step="1">
+              </div>
+              <div class="form-group flex-2">
+                <label for="productCategory">Category *</label>
+                <select id="productCategory" required>
+                  <option value="" disabled selected>Select category...</option>
+                  <option value="Processor">Processor (CPU)</option>
+                  <option value="Graphics Card">Graphics Card (GPU)</option>
+                  <option value="RAM">RAM / Memory</option>
+                  <option value="Storage">Storage / SSD</option>
+                  <option value="Peripherals">Peripherals</option>
+                  <option value="Display">Display / Monitor</option>
+                  <option value="Motherboard">Motherboard</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="productName">Product Name *</label>
+              <input type="text" id="productName" placeholder="e.g. AMD Ryzen 7 7800X3D" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="productQty">Quantity *</label>
+                <input type="number" id="productQty" placeholder="e.g. 14" required min="0" step="1">
+              </div>
+              <div class="form-group flex-1">
+                <label for="productPrice">Unit Price ($) *</label>
+                <input type="number" id="productPrice" placeholder="e.g. 389.99" required min="0.01" step="0.01">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" id="btnSave" class="btn btn-primary">
+                Save Product
+              </button>
+              <button type="button" id="btnClearForm" class="btn btn-ghost">
+                Clear
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Card 2: Instant Search via Hash Table -->
+        <div class="card">
+          <div class="card-title-row">
+            <h2>Instant Search</h2>
+            <span class="complexity-tag tag-cyan">O(1) Hash Lookup</span>
+          </div>
+
+          <form id="searchForm" class="search-bar">
+            <input type="number" id="searchId" placeholder="Enter Product ID (e.g. 105)..." required min="1">
+            <button type="submit" class="btn btn-cyan">Search</button>
+          </form>
+
+          <div id="searchResult" class="search-result-box">
+            <p class="search-placeholder">
+              Enter any ID to inspect instant O(1) Hash Table bucket calculation and traversal steps.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Sorted Table & Hash Buckets -->
+      <section class="col-right">
+        <!-- Card 3: Sorted Inventory Table (BST In-Order) -->
+        <div class="card">
+          <div class="card-title-row">
+            <div>
+              <h2>Live Inventory Table</h2>
+              <p class="card-desc">
+                Sorted strictly by ID via <strong>BST In-Order Traversal (Left &rarr; Root &rarr; Right)</strong>.
+              </p>
+            </div>
+            <span class="badge-count" id="tableCount">0 items</span>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">ID</th>
+                  <th>Product Name</th>
+                  <th>Category</th>
+                  <th style="width: 90px; text-align: right;">Qty</th>
+                  <th style="width: 100px; text-align: right;">Price</th>
+                  <th style="width: 110px; text-align: right;">Total</th>
+                  <th style="width: 90px; text-align: center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryBody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+            <div id="tableEmpty" class="table-empty" style="display: none;">
+              No products in stock. Click "Seed Demo Data" above.
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Hash Table Buckets & Collisions Visualizer -->
+        <div class="card">
+          <div class="card-title-row">
+            <div>
+              <h2>Hash Table Inspector (Capacity: 13)</h2>
+              <p class="card-desc">
+                Formula: <code>h(k) = ID % 13</code>. Demonstrates <strong>Separate Chaining</strong> linked lists and collision resolution.
+              </p>
+            </div>
+          </div>
+
+          <div class="buckets-list" id="bucketsList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <!-- Fallback client DSA logic if static file opened directly -->
+  <script src="dsa.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

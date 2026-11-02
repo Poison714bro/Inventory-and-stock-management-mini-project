@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Inventory and Stock Management System powered by custom Hash Table and Binary Search Tree",
   "scripts": {
-    "build": "echo Static site ready for deployment",
+    "build": "node build.js",
     "dev": "inventory.exe --server 8080",
     "serve": "inventory.exe --server 8080",
     "compile": "g++ -std=c++17 -O2 -static backend/main.cpp -o inventory.exe -lws2_32",
