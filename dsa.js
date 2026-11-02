@@ -48,7 +48,7 @@ class CustomHashTable {
         cur.value = product;
         return { updated: true, bucketIndex: index, chainSteps: steps };
       }
-      cur = cur->next || cur.next;
+      cur = cur.next;
     }
 
     const newNode = new HashNode(k, product, this.buckets[index]);
@@ -282,4 +282,10 @@ class InventoryManager {
 
 if (typeof window !== 'undefined') {
   window.InventoryManager = InventoryManager;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.InventoryManager = InventoryManager;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { Product, CustomHashTable, ProductBST, InventoryManager };
 }
