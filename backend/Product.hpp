@@ -39,7 +39,7 @@ public:
         return ss.str();
     }
 
-private:
+public:
     static std::string escapeJson(const std::string& s) {
         std::ostringstream ss;
         for (char c : s) {

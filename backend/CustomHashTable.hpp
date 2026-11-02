@@ -35,7 +35,7 @@ public:
         : capacity(capacity), size(0), buckets(capacity, nullptr) {}
 
     ~CustomHashTable() {
-        clear(false);
+        clear();
     }
 
     /**
@@ -68,8 +68,9 @@ public:
             current = current->next;
         }
 
-        // Prepend new node to bucket head in O(1)
-        buckets[outBucketIdx] = new HashNode(key, product, buckets[outBucketIdx]);
+        // Key not found: prepend new node to bucket head in O(1)
+        HashNode* newNode = new HashNode(key, product, buckets[outBucketIdx]);
+        buckets[outBucketIdx] = newNode;
         size++;
         outChainSteps = 1;
         return true; // Newly inserted
@@ -91,14 +92,13 @@ public:
             current = current->next;
         }
 
-        return nullptr;
+        return nullptr; // Not found
     }
 
     /**
-     * Removes product by key in O(1) avg time.
-     * Returns the removed Product* so memory can be freed without scanning.
+     * Removes product by key from the separate chaining linked list.
      */
-    Product* remove(int key, int& outBucketIdx, int& outChainSteps) {
+    bool remove(int key, int& outBucketIdx, int& outChainSteps) {
         outBucketIdx = hash(key);
         HashNode* current = buckets[outBucketIdx];
         HashNode* prev = nullptr;
@@ -107,7 +107,6 @@ public:
         while (current != nullptr) {
             outChainSteps++;
             if (current->key == key) {
-                Product* removedProduct = current->value;
                 if (prev == nullptr) {
                     buckets[outBucketIdx] = current->next;
                 } else {
@@ -115,29 +114,32 @@ public:
                 }
                 delete current;
                 size--;
-                return removedProduct;
+                return true;
             }
             prev = current;
             current = current->next;
         }
 
-        return nullptr;
+        return false; // Not found
     }
 
-    /**
-     * Single-pass collision statistics computation
-     */
+    int getChainLength(int bucketIdx) const {
+        if (bucketIdx < 0 || bucketIdx >= capacity) return 0;
+        int count = 0;
+        HashNode* cur = buckets[bucketIdx];
+        while (cur != nullptr) {
+            count++;
+            cur = cur->next;
+        }
+        return count;
+    }
+
     void getCollisionStats(int& occupied, int& collided, int& overflow) const {
         occupied = 0;
         collided = 0;
         overflow = 0;
         for (int i = 0; i < capacity; i++) {
-            int len = 0;
-            HashNode* cur = buckets[i];
-            while (cur != nullptr) {
-                len++;
-                cur = cur->next;
-            }
+            int len = getChainLength(i);
             if (len > 0) occupied++;
             if (len > 1) {
                 collided++;
@@ -163,40 +165,37 @@ public:
         }
     }
 
-    /**
-     * Single-pass bucket JSON serialization (50% faster, no duplicate traversals)
-     */
     std::string getBucketsJson() const {
         std::ostringstream ss;
         ss << "[";
         for (int i = 0; i < capacity; i++) {
             if (i > 0) ss << ",";
-            std::ostringstream itemStream;
-            int count = 0;
+            int len = getChainLength(i);
+            ss << "{"
+               << "\"index\":" << i << ","
+               << "\"count\":" << len << ","
+               << "\"hasCollision\":" << (len > 1 ? "true" : "false") << ","
+               << "\"items\":[";
+
             HashNode* cur = buckets[i];
+            bool first = true;
             while (cur != nullptr) {
-                if (count > 0) itemStream << ",";
-                itemStream << "{\"key\":" << cur->key << ",\"name\":\"" << cur->value->name << "\"}";
-                count++;
+                if (!first) ss << ",";
+                ss << "{\"key\":" << cur->key << ",\"name\":\"" << Product::escapeJson(cur->value->name) << "\"}";
+                first = false;
                 cur = cur->next;
             }
-
-            ss << "{\"index\":" << i << ",\"count\":" << count
-               << ",\"hasCollision\":" << (count > 1 ? "true" : "false")
-               << ",\"items\":[" << itemStream.str() << "]}";
+            ss << "]}";
         }
         ss << "]";
         return ss.str();
     }
 
-    void clear(bool freeProducts = false) {
+    void clear() {
         for (int i = 0; i < capacity; i++) {
             HashNode* cur = buckets[i];
             while (cur != nullptr) {
                 HashNode* next = cur->next;
-                if (freeProducts && cur->value != nullptr) {
-                    delete cur->value;
-                }
                 delete cur;
                 cur = next;
             }
