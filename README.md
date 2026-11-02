@@ -21,8 +21,7 @@
 7. [How to Run Locally & Build](#-how-to-run-locally--build)
 8. [Vercel Cloud Deployment](#-vercel-cloud-deployment)
 9. [Project File Structure](#-project-file-structure)
-10. [Academic Viva & Defense Q&A](#-academic-viva--defense-qa)
-11. [License](#-license)
+10. [License](#-license)
 
 ---
 
@@ -291,38 +290,6 @@ The repository is configured for automated Vercel CI/CD:
 └── README.md                  # Comprehensive project documentation
 ```
 
----
-
-## 🎓 Academic Viva & Defense Q&A
-
-### Q1: Why use both a Hash Table and a Binary Search Tree together?
-> **Answer**: A Hash Table provides extremely fast average $O(1)$ search and in-place updates by key, but lacks intrinsic ordering (sorting its keys requires an expensive $O(n \log n)$ operation). Conversely, a Binary Search Tree maintains natural sorted ordering, allowing $O(n)$ in-order traversal without sorting. Combining both provides $O(1)$ point lookups alongside $O(n)$ sorted catalog generation.
-
-### Q2: How do you prevent data desynchronization between the two data structures?
-> **Answer**: Both data structures store pointers (`Product*`) to the *exact same heap-allocated object*. When quantity or price is updated via the Hash Table, the mutation occurs directly on the shared memory address. Therefore, subsequent BST traversals read the updated values instantly without requiring tree rebalancing or duplicate writes.
-
-### Q3: Why is the Hash Table capacity fixed at 13?
-> **Answer**: 13 is a prime number. In hash tables using modulo arithmetic ($h(k) = k \pmod M$), prime values for $M$ significantly reduce clustering when keys share common factors with the table size. Furthermore, size 13 is compact enough to clearly demonstrate collisions (e.g., $105 \pmod{13} = 1$ and $118 \pmod{13} = 1$) during an academic evaluation.
-
-### Q4: How does BST deletion handle a node with two children?
-> **Answer**: 
-> 1. Find the node's **In-Order Successor** (the smallest value in its right subtree, found by traversing left from the right child).
-> 2. Copy the successor's data into the target node.
-> 3. Recursively delete the successor node from the right subtree (which is guaranteed to have at most one child, reducing to Case 1 or Case 2).
-
-### Q5: What is the worst-case time complexity of the Hash Table, and when does it occur?
-> **Answer**: The worst case is $O(n)$, occurring when every inserted key produces the exact same hash index (pathological collision), degenerating the bucket into a linear linked list. In average real-world scenarios with a uniform hash distribution and low load factor ($\alpha < 0.75$), lookup remains $O(1)$.
-
-### Q6: What is the worst-case time complexity of the BST, and how can it be avoided?
-> **Answer**: If items are inserted in strictly sorted order (e.g., $101, 102, 103, \dots$), a standard BST degenerates into a linear linked list with height $h = n$, degrading search and insertion to $O(n)$. This can be prevented using self-balancing trees such as **AVL Trees** or **Red-Black Trees**, which enforce $h = O(\log n)$ via tree rotations.
-
-### Q7: Why is Separate Chaining preferred over Open Addressing (Linear Probing) here?
-> **Answer**: Separate Chaining handles deletions cleanly by unlinking list nodes without leaving "tombstone" markers. It also degrades gracefully under high load factors ($\alpha > 1$), whereas Linear Probing suffers from primary clustering and performance degradation as the table fills up.
-
-### Q8: How does in-place stock updating achieve $O(1)$ without affecting the BST?
-> **Answer**: Because the BST is ordered strictly by `product->id` (an immutable primary key), changing non-key properties such as `quantity` or `price` does not alter the relative order of nodes in the tree. Thus, no tree rebalancing or pointer swaps are necessary.
-
----
 
 ## 📄 License
 This project is open-source and distributed under the [MIT License](LICENSE).
